@@ -1,0 +1,60 @@
+name: Bug report
+description: 报告一个可复现的问题 / Report a reproducible bug
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你的反馈。请尽量填写下面的信息，方便复现问题。
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: 安装方式 / Install method
+      options:
+        - Homebrew
+        - pipx
+        - install.py
+        - 直接运行源码
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / Version
+      placeholder: v0.1.1
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: 操作系统 / Platform
+      placeholder: macOS 15 / Ubuntu 24.04 / Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: 复现命令 / Command
+      placeholder: |
+        codex-switcher --list --json
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果 / Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果 / Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图 / Logs or screenshots
+      description: 请不要贴真实 token、refresh token、账号快照

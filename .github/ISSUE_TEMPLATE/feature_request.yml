@@ -1,0 +1,40 @@
+name: Feature request
+description: 提出一个功能建议 / Suggest a new feature
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        欢迎提出功能建议。请尽量说明实际使用场景。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的问题 / Problem to solve
+      placeholder: 当前在哪个场景下不方便？
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 你希望的解决方案 / Proposed solution
+      placeholder: 你希望工具怎么工作？
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案 / Alternatives considered
+      placeholder: 你尝试过哪些方式？
+  - type: dropdown
+    id: target
+    attributes:
+      label: 主要面向 / Primary audience
+      options:
+        - 新手用户
+        - 高级用户
+        - Agent / 自动化脚本
+        - 安装与部署
+    validations:
+      required: true

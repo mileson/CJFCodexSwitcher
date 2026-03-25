@@ -173,6 +173,11 @@ CJFCodexSwitcher/
 2. 非交互 CLI 的文本输出和 JSON 输出都可用
 3. 如果改动影响工作流，项目内 Skill 和 README 也同步更新
 
+更多信息：
+
+- [贡献指南 / CONTRIBUTING.md](CONTRIBUTING.md)
+- [安全披露 / SECURITY.md](SECURITY.md)
+
 ### Release
 
 当前推荐版本 release notes：
