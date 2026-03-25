@@ -153,7 +153,7 @@ CJFCodexSwitcher/
 
 当前推荐版本 release notes：
 
-- [v0.1.6 Release Notes](docs/releases/v0.1.6.md)
+- [v0.1.7 Release Notes](docs/releases/v0.1.7.md)
 
 ## License
 
