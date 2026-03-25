@@ -35,7 +35,7 @@
 ### 一句话安装
 
 ```bash
-brew install mileson/cjfcodexswitcher/cjfcodexswitcher
+brew tap mileson/cjfcodexswitcher && brew install cjfcodexswitcher
 ```
 
 ```bash
