@@ -1,0 +1,122 @@
+name: Release And Homebrew
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          NOTES_FILE="docs/releases/${VERSION}.md"
+          if [ ! -f "${NOTES_FILE}" ]; then
+            NOTES_FILE="$(mktemp)"
+            {
+              echo "# ${GITHUB_REPOSITORY##*/} ${VERSION}"
+              echo
+              echo "Automated release generated from tag ${VERSION}."
+            } > "${NOTES_FILE}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "notes_file=${NOTES_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          NOTES_FILE="${{ steps.meta.outputs.notes_file }}"
+          ASSET_PATH="docs/images/overview.png"
+
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            gh release edit "${VERSION}" --title "${GITHUB_REPOSITORY##*/} ${VERSION}" --notes-file "${NOTES_FILE}"
+          else
+            if [ -f "${ASSET_PATH}" ]; then
+              gh release create "${VERSION}" "${ASSET_PATH}#overview.png" --title "${GITHUB_REPOSITORY##*/} ${VERSION}" --notes-file "${NOTES_FILE}"
+            else
+              gh release create "${VERSION}" --title "${GITHUB_REPOSITORY##*/} ${VERSION}" --notes-file "${NOTES_FILE}"
+            fi
+          fi
+
+  update-homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Compute tarball SHA256
+        id: sha
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          curl -L -s "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${VERSION}.tar.gz" -o "/tmp/${VERSION}.tar.gz"
+          SHA256="$(sha256sum "/tmp/${VERSION}.tar.gz" | awk '{print $1}')"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: mileson/homebrew-cjfcodexswitcher
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update formula
+        shell: bash
+        run: |
+          VERSION="${{ steps.sha.outputs.version }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+          cat > tap/Formula/cjfcodexswitcher.rb <<EOF
+          class Cjfcodexswitcher < Formula
+            include Language::Python::Virtualenv
+
+            desc "Codex account switcher with live quota view and agent-friendly CLI"
+            homepage "https://github.com/${GITHUB_REPOSITORY}"
+            url "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${VERSION}.tar.gz"
+            sha256 "${SHA256}"
+            license "MIT"
+
+            depends_on "python@3.12"
+
+            def install
+              virtualenv_install_with_resources
+            end
+
+            test do
+              output = shell_output("#{bin}/codex-switcher --help")
+              assert_match "Codex", output
+            end
+          end
+          EOF
+
+      - name: Commit and push formula
+        shell: bash
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No formula changes."
+            exit 0
+          fi
+          git add Formula/cjfcodexswitcher.rb
+          git commit -m "Update formula to ${GITHUB_REF_NAME}"
+          git push

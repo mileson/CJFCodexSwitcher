@@ -6,6 +6,9 @@
 [![License](https://img.shields.io/github/license/mileson/CJFCodexSwitcher)](./LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](./pyproject.toml)
 [![Homebrew](https://img.shields.io/badge/Homebrew-installable-FBB040?logo=homebrew&logoColor=black)](https://github.com/mileson/homebrew-cjfcodexswitcher)
+[![GitHub Stars](https://img.shields.io/github/stars/mileson/CJFCodexSwitcher?style=social)](https://github.com/mileson/CJFCodexSwitcher/stargazers)
+[![Last Commit](https://img.shields.io/github/last-commit/mileson/CJFCodexSwitcher)](https://github.com/mileson/CJFCodexSwitcher/commits/main)
+[![Downloads](https://img.shields.io/github/downloads/mileson/CJFCodexSwitcher/total)](https://github.com/mileson/CJFCodexSwitcher/releases)
 
 ![CJFCodexSwitcher Screenshot](docs/images/overview.png)
 
