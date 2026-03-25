@@ -1410,7 +1410,7 @@ def print_accounts_table(
     hourly_width = 20
     weekly_width = 20
     space_width = 24
-    table_width = 2 + 2 + email_width + 1 + plan_width + 1 + hourly_width + 1 + weekly_width + 1 + space_width + 2
+    table_width = 2 + 2 + email_width + 1 + space_width + 1 + plan_width + 1 + hourly_width + 1 + weekly_width + 2
 
     print()
     print(f"{Colors.BOLD}  {title}{Colors.ENDC}")
@@ -1420,10 +1420,10 @@ def print_accounts_table(
     header = (
         f"  {pad_display('#', 2)} "
         f"{pad_display('邮箱', email_width)} "
+        f"{pad_display('SPACE', space_width)} "
         f"{pad_display('PLAN', plan_width)} "
         f"{pad_display('5小时', hourly_width)} "
-        f"{pad_display('每周', weekly_width)} "
-        f"{pad_display('SPACE', space_width)}"
+        f"{pad_display('每周', weekly_width)}"
     )
     print(f"{Colors.BOLD}{header}{Colors.ENDC}")
     print(f"{Colors.DIM}  {'─' * table_width}{Colors.ENDC}")
@@ -1476,7 +1476,7 @@ def print_accounts_table(
         weekly_display = f"{get_color(weekly_remaining)}{pad_display(weekly_str, weekly_width)}{Colors.ENDC}"
 
         index_cell = pad_display(str(i), 2)
-        print(f"  {index_cell} {email_cell} {plan_display} {hourly_display} {weekly_display} {space_display}")
+        print(f"  {index_cell} {email_cell} {space_display} {plan_display} {hourly_display} {weekly_display}")
 
     if highlight_current_first and current_rows:
         for i, acc in enumerate(current_rows, 1):

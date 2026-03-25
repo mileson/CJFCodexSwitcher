@@ -74,6 +74,7 @@ codex-switcher
 页面中的核心字段：
 
 - `邮箱`：账号邮箱
+- `SPACE`：账号当前主要 workspace / organization 标识
 - `PLAN`：计划类型，例如 `TEAM`
 - `5小时`：当前 5 小时额度剩余数量与下次重置时间
 - `每周`：当前每周额度剩余数量与下次重置时间
@@ -153,7 +154,7 @@ CJFCodexSwitcher/
 
 当前推荐版本 release notes：
 
-- [v0.1.7 Release Notes](docs/releases/v0.1.7.md)
+- [v0.1.8 Release Notes](docs/releases/v0.1.8.md)
 
 ## License
 

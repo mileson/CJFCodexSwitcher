@@ -82,6 +82,7 @@ The tool opens directly into the live account view.
 Key fields:
 
 - `邮箱`: account email
+- `SPACE`: primary workspace / organization label for the account
 - `PLAN`: plan type such as `TEAM`
 - `5小时`: 5-hour remaining amount and next reset time
 - `每周`: weekly remaining amount and next reset time
@@ -156,7 +157,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Current recommended release notes:
 
-- [v0.1.7 Release Notes](docs/releases/v0.1.7.md)
+- [v0.1.8 Release Notes](docs/releases/v0.1.8.md)
 
 ## License
 
