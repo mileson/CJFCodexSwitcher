@@ -21,6 +21,8 @@ accounts/
 usage_cache/
 backups/
 runtime/
+openspec/
+.codex/skills/openspec-*/
 
 # Editors
 .idea/
