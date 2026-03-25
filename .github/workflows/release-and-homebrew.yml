@@ -57,8 +57,17 @@ jobs:
   update-homebrew:
     needs: release
     runs-on: ubuntu-latest
-    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
+      - name: Check tap token
+        shell: bash
+        run: |
+          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
+            echo "HOMEBREW_TAP_TOKEN is not configured. Skipping tap sync."
+            exit 0
+          fi
+
       - name: Checkout source repo
         uses: actions/checkout@v4
 
@@ -76,7 +85,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mileson/homebrew-cjfcodexswitcher
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ env.HOMEBREW_TAP_TOKEN }}
           path: tap
 
       - name: Update formula
