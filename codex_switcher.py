@@ -1259,6 +1259,41 @@ def collect_account_entries() -> List[dict]:
 
     return entries
 
+def is_current_account_saved(current_record_key: str) -> bool:
+    """检查当前账号是否已经存在于存档中"""
+    if not current_record_key:
+        return False
+
+    accounts_dir = get_accounts_dir()
+    if not accounts_dir.exists():
+        return False
+
+    for auth_file in sorted(accounts_dir.glob('auth_*.json')):
+        auth_data = load_auth_data_from_path(auth_file)
+        if not auth_data:
+            continue
+        info = get_account_info(auth_data, str(auth_file))
+        if info and info.get('record_key') == current_record_key:
+            return True
+    return False
+
+def ensure_current_account_saved() -> bool:
+    """自动存档当前未存档账号"""
+    auth_data = load_current_auth()
+    if not auth_data:
+        return False
+
+    info = get_account_info(auth_data, str(get_auth_file()))
+    if not info:
+        return False
+
+    record_key = info.get('record_key', '')
+    if is_current_account_saved(record_key):
+        return True
+
+    save_name = info.get('email', 'account')
+    return save_current_auth(save_name)
+
 def clone_display_info(info: dict, entry: dict) -> dict:
     """克隆用于展示的账号信息"""
     display = dict(info)
@@ -1384,6 +1419,7 @@ def build_view_all_rows(
 
 def load_live_account_rows(show_progress: bool = False) -> List[dict]:
     """加载并实时刷新账号列表"""
+    ensure_current_account_saved()
     entries = collect_account_entries()
     refresh_jobs = build_refresh_jobs(entries)
     results = refresh_jobs_live(refresh_jobs, show_progress=show_progress)
@@ -1397,13 +1433,22 @@ def get_remaining_percent(acc: dict, window: str) -> int:
         return -1
     return max(0, 100 - int(used_percent))
 
+def get_remaining_count(acc: dict, window: str) -> int:
+    """获取指定窗口的剩余数量"""
+    key = 'hourly_remaining' if window == 'hourly' else 'weekly_remaining'
+    value = acc.get(key, '')
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return -1
+
 def sort_accounts_for_agent(rows: List[dict]) -> List[dict]:
-    """按 5 小时余量、每周余量排序账号"""
+    """按 5 小时剩余数量、每周剩余数量排序账号"""
     return sorted(
         rows,
         key=lambda acc: (
-            -get_remaining_percent(acc, 'hourly'),
-            -get_remaining_percent(acc, 'weekly'),
+            -get_remaining_count(acc, 'hourly'),
+            -get_remaining_count(acc, 'weekly'),
             str(acc.get('email', '')),
         ),
     )
@@ -1464,12 +1509,8 @@ def resolve_account_selector(rows: List[dict], selector: str) -> Optional[dict]:
 
 def print_view_all_actions(rows: List[dict]):
     """打印查看余量页面底部操作"""
-    current_unsaved = any(row.get('is_current') and not row.get('is_saved') for row in rows)
-
     print(f"{Colors.BOLD}  操作面板{Colors.ENDC}")
     print(f"{Colors.DIM}  {'─' * 40}{Colors.ENDC}")
-    if current_unsaved:
-        print(f"  {Colors.CYAN}[S]{Colors.ENDC} 存档当前账号")
     print(f"  {Colors.CYAN}[编号]{Colors.ENDC} 切换账号")
     print(f"  {Colors.CYAN}[0]{Colors.ENDC} 退出工具")
     print(f"  {Colors.DIM}[Enter]{Colors.ENDC} 刷新当前页面")
@@ -1481,7 +1522,10 @@ def view_all_accounts():
         clear_screen()
         print_header()
         print(f"\n{Colors.CYAN}>>> 查看所有账号余量{Colors.ENDC}")
-        rows = load_live_account_rows(show_progress=True)
+        rows = sort_accounts_for_agent(load_live_account_rows(show_progress=True))
+        clear_screen()
+        print_header()
+        print(f"\n{Colors.CYAN}>>> 查看所有账号余量{Colors.ENDC}")
         if rows:
             print_accounts_table(rows, "账号列表")
         else:
@@ -1502,27 +1546,10 @@ def view_all_accounts():
         if choice == '0':
             return
 
-        current_row = next((row for row in rows if row.get('is_current')), None)
-        current_unsaved = bool(current_row and not current_row.get('is_saved'))
-
-        if choice.lower() == 's':
-            if not current_unsaved:
-                print(f"\n{Colors.YELLOW}  当前账号已存档，无需重复保存{Colors.ENDC}")
-                input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
-                continue
-
-            save_name = current_row.get('email', 'account')
-            if save_current_auth(save_name):
-                print(f"\n{Colors.GREEN}  ✓ 当前账号已存档: {save_name}{Colors.ENDC}")
-            else:
-                print(f"\n{Colors.RED}  ✗ 当前账号存档失败{Colors.ENDC}")
-            input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
-            continue
-
         try:
             idx = int(choice) - 1
         except ValueError:
-            print(f"\n{Colors.RED}  请输入编号、S 或直接回车{Colors.ENDC}")
+            print(f"\n{Colors.RED}  请输入编号、0 或直接回车{Colors.ENDC}")
             input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
             continue
 

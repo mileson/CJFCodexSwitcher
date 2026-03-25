@@ -93,13 +93,16 @@ python3 -m pip install "git+https://github.com/mileson/CJFCodexSwitcher.git"
 
 - `Enter`：刷新当前页面
 - 输入 `#` 序号：切换到对应账号
-- 输入 `S`：存档当前账号（仅当前账号未存档时显示）
 - 输入 `0`：退出工具
+
+说明：
+
+- 当前账号如果尚未存档，进入查看余量页时会自动创建存档
 
 ### Agent / CLI 快捷命令
 
 ```bash
-# 实时列出账号，按 5 小时余量、1 周余量排序
+# 实时列出账号，按 5 小时剩余数量、1 周剩余数量排序
 codex-switcher --list
 
 # 以 JSON 输出账号列表
@@ -127,8 +130,8 @@ codex-switcher --refresh
 
 排序规则：
 
-1. 先按 5 小时剩余量降序
-2. 相同则按 1 周剩余量降序
+1. 先按 5 小时剩余数量降序
+2. 相同则按 1 周剩余数量降序
 3. 最后按邮箱升序作为 tie-breaker
 
 ### 给 Agent 的可复制提示词
@@ -182,7 +185,7 @@ CJFCodexSwitcher/
 
 当前推荐版本 release notes：
 
-- [v0.1.1 Release Notes](docs/releases/v0.1.1.md)
+- [v0.1.2 Release Notes](docs/releases/v0.1.2.md)
 
 ### License
 
