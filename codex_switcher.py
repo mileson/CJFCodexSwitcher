@@ -1682,6 +1682,61 @@ def sort_accounts_for_live_view(rows: List[dict]) -> List[dict]:
     other_rows = [row for row in rows if not row.get('is_current')]
     return current_rows + sort_accounts_for_agent(other_rows)
 
+def is_account_unavailable(row: dict) -> bool:
+    """Treat reauth/cached-without-usage rows as unavailable snapshots."""
+    if row.get('is_current'):
+        return False
+
+    refresh_status = str(row.get('refresh_status', '') or '').lower()
+    if refresh_status == 'reauth':
+        return True
+
+    has_usage_window = bool(row.get('reset_at_hourly') or row.get('reset_at_weekly'))
+    if refresh_status in {'cached', 'unknown'} and not has_usage_window:
+        return True
+    return False
+
+def filter_rows_for_view(rows: List[dict], show_unavailable: bool) -> List[dict]:
+    """Hide unavailable saved snapshots unless explicitly requested."""
+    if show_unavailable:
+        return rows
+    return [row for row in rows if not is_account_unavailable(row)]
+
+def delete_saved_account_file(file_path: str) -> bool:
+    """Delete a saved auth snapshot only when it lives in the accounts directory."""
+    if not file_path:
+        return False
+    try:
+        target = Path(file_path).resolve()
+        accounts_dir = get_accounts_dir().resolve()
+        target.relative_to(accounts_dir)
+    except Exception:
+        return False
+
+    if not target.exists() or not target.is_file():
+        return False
+
+    try:
+        target.unlink()
+        return True
+    except Exception:
+        return False
+
+def cleanup_unavailable_rows(rows: List[dict]) -> int:
+    """Remove unavailable saved snapshots from disk."""
+    deleted = 0
+    visited = set()
+    for row in rows:
+        switch_path = str(row.get('switch_path') or '')
+        if not switch_path or switch_path in visited:
+            continue
+        if not is_account_unavailable(row):
+            continue
+        if delete_saved_account_file(switch_path):
+            deleted += 1
+            visited.add(switch_path)
+    return deleted
+
 def serialize_account(acc: dict, rank: Optional[int] = None) -> dict:
     """将账号信息序列化为 CLI/JSON 输出"""
     data = {
@@ -1736,22 +1791,31 @@ def resolve_account_selector(rows: List[dict], selector: str) -> Optional[dict]:
             return row
     return None
 
-def print_view_all_actions(rows: List[dict]):
+def print_view_all_actions(rows: List[dict], show_unavailable: bool, hidden_count: int):
     """打印查看余量页面底部操作"""
     print(f"{Colors.BOLD}  操作面板{Colors.ENDC}")
     print(f"{Colors.DIM}  {'─' * 40}{Colors.ENDC}")
     print(f"  {Colors.CYAN}[编号]{Colors.ENDC} 切换账号")
+    print(f"  {Colors.CYAN}[d 编号]{Colors.ENDC} 删除指定快照")
+    print(f"  {Colors.CYAN}[c]{Colors.ENDC} 清理失效/掉线快照")
+    toggle_label = '隐藏失效账号' if show_unavailable else '显示失效账号'
+    print(f"  {Colors.CYAN}[a]{Colors.ENDC} {toggle_label}")
+    if hidden_count > 0 and not show_unavailable:
+        print(f"  {Colors.DIM}当前已隐藏 {hidden_count} 个失效快照{Colors.ENDC}")
     print(f"  {Colors.CYAN}[0]{Colors.ENDC} 退出工具")
     print(f"  {Colors.DIM}[Enter]{Colors.ENDC} 刷新当前页面")
     print()
 
 def view_all_accounts():
     """查看所有账号（自动刷新使用量）"""
+    show_unavailable = False
     while True:
         clear_screen()
         print_header()
         print(f"\n{Colors.CYAN}>>> 查看所有账号余量{Colors.ENDC}")
-        rows = sort_accounts_for_live_view(load_live_account_rows(show_progress=True))
+        all_rows = sort_accounts_for_live_view(load_live_account_rows(show_progress=True))
+        rows = filter_rows_for_view(all_rows, show_unavailable)
+        hidden_count = max(0, len(all_rows) - len(rows))
         clear_screen()
         print_header()
         print(f"\n{Colors.CYAN}>>> 查看所有账号余量{Colors.ENDC}")
@@ -1760,9 +1824,12 @@ def view_all_accounts():
         else:
             print(f"\n{Colors.YELLOW}  当前未登录任何账号，且没有已存档账号{Colors.ENDC}")
 
-        print(f"{Colors.DIM}  共 {len(rows)} 个账号{Colors.ENDC}")
+        summary = f"  共 {len(rows)} 个账号"
+        if hidden_count > 0 and not show_unavailable:
+            summary += f"（已隐藏 {hidden_count} 个失效快照）"
+        print(f"{Colors.DIM}{summary}{Colors.ENDC}")
         print()
-        print_view_all_actions(rows)
+        print_view_all_actions(rows, show_unavailable, hidden_count)
 
         try:
             choice = input("  请选择: ").strip()
@@ -1775,10 +1842,54 @@ def view_all_accounts():
         if choice == '0':
             return
 
+        lowered = choice.lower()
+        if lowered == 'a':
+            show_unavailable = not show_unavailable
+            continue
+
+        if lowered == 'c':
+            deleted = cleanup_unavailable_rows(all_rows)
+            if deleted:
+                print(f"\n{Colors.GREEN}  ✓ 已清理 {deleted} 个失效快照{Colors.ENDC}")
+            else:
+                print(f"\n{Colors.YELLOW}  没有可清理的失效快照{Colors.ENDC}")
+            input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+            continue
+
+        if lowered.startswith('d'):
+            parts = choice.split(maxsplit=1)
+            selector = parts[1].strip() if len(parts) > 1 else ''
+            if not selector.isdigit():
+                print(f"\n{Colors.RED}  删除请使用 d 编号，例如 d 3{Colors.ENDC}")
+                input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+                continue
+
+            idx = int(selector) - 1
+            if idx < 0 or idx >= len(rows):
+                print(f"\n{Colors.RED}  无效的编号{Colors.ENDC}")
+                input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+                continue
+
+            row = rows[idx]
+            if row.get('is_current'):
+                print(f"\n{Colors.YELLOW}  当前登录账号不能直接删除{Colors.ENDC}")
+                input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+                continue
+
+            switch_path = row.get('switch_path')
+            if not switch_path or not delete_saved_account_file(switch_path):
+                print(f"\n{Colors.RED}  删除失败：未找到可删除的快照文件{Colors.ENDC}")
+                input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+                continue
+
+            print(f"\n{Colors.GREEN}  ✓ 已删除快照: {row.get('email', 'Unknown')}{Colors.ENDC}")
+            input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
+            continue
+
         try:
             idx = int(choice) - 1
         except ValueError:
-            print(f"\n{Colors.RED}  请输入编号、0 或直接回车{Colors.ENDC}")
+            print(f"\n{Colors.RED}  请输入编号、d 编号、a、c、0 或直接回车{Colors.ENDC}")
             input(f"{Colors.DIM}按回车键继续...{Colors.ENDC}")
             continue
 
